@@ -1,0 +1,21 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="post_create_form">
+    <form action="{{ url_for('post_create_api') }}" method="post" enctype="multipart/form-data">
+        <label>title</label>
+        <input for="title" name="title"/>
+
+        <label>content</label>
+        <input for="content" name="content"/>
+
+        <input type="submit" value="register" />
+        <a href='#'></a>
+    </form>
+</div>
+<div>
+    div.container
+</div>
+
+{% endblock %}

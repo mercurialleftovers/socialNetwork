@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="login_form">
+    <form action="{{ url_for('login_api') }}" method="post" enctype="multipart/form-data">
+        <label>psername</label>
+        <input for="username" name="username"/>
+
+        <label>password</label>
+        <input for="password" name="password"/>
+
+        <input type="submit" value="register" />
+    </form>
+</div>
+{% endblock %}
