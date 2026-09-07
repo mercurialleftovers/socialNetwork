@@ -1,13 +1,21 @@
 from typing import Annotated
-from fastapi import FastAPI, Request, Form, Depends
+from fastapi import FastAPI, Request, Response, Form, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db_session
-from schemas import UserLogin, UserCreate, UserResponse, PostCreate
+from schemas import (
+    UserLogin,
+    UserCreate,
+    UserResponse,
+    PostCreate,
+    TokenResponse,
+    AccessToken,
+)
 from models import User, Post
+from auth import sign_jwt, password_hasher, verify_password, create_access_token
 
 import random
 import os
@@ -82,22 +90,55 @@ def post_view(
     )
 
 
-@app.post("/api/user/login", name="login_api", include_in_schema=False)
+@app.get("/users/view", name="users_view", include_in_schema=False)
+def users_view(
+    req: Request,
+    session: Annotated[Session, Depends(get_db_session)],
+):
+    q = select(User)
+    users = session.execute(q).scalars().all()
+    return templates.TemplateResponse(
+        name="users.html",
+        request=req,
+        context={
+            "title": "post",
+            "users": users,
+        },
+    )
+
+
+@app.post(
+    "/api/user/login",
+    name="login_api",
+)
 def login_api(
     user: Annotated[UserLogin, Form()],
     session: Annotated[Session, Depends(get_db_session)],
-) -> UserResponse:
+    res: Response,
+) -> TokenResponse | dict[str, str]:
     db_user = session.execute(
         select(User).where(User.username == user.username)
     ).scalar_one_or_none()
 
+    # authentication:
     if not db_user:
         raise Exception(f"user {user.username} does not exist")
 
-    return db_user
+    if verify_password(user.password, db_user.password_hash):
+        res.set_cookie(
+            "token", create_access_token(AccessToken(username=user.username))
+        )
+        return {
+            "token": create_access_token(AccessToken(username=user.username)),
+        }
+
+    return {"msg": "wrong password"}
 
 
-@app.post("/api/user/register", name="register_api", include_in_schema=False)
+@app.post(
+    "/api/user/register",
+    name="register_api",
+)
 def register_api(
     user: Annotated[UserCreate, Form()],
     session: Annotated[Session, Depends(get_db_session)],
@@ -109,12 +150,20 @@ def register_api(
     if db_user:
         raise Exception(f"user {user.username} already exists")
 
-    session.add(User(**user.model_dump()))
+    new_user = user.model_dump()
+    new_user["password_hash"] = password_hasher.hash(new_user["password"])
+    del new_user[
+        "password"
+    ]  # TODO(bader): this seems to be against best practices to me, but it works nontheless
+    session.add(User(**new_user))
     return user
 
 
 # TODO(bader): here, you must set the auth cookie, to know the user_id
-@app.post("/api/post/create", name="post_create_api", include_in_schema=False)
+@app.post(
+    "/api/post/create",
+    name="post_create_api",
+)
 def post_api(
     post: Annotated[PostCreate, Form()],
     session: Annotated[Session, Depends(get_db_session)],
@@ -127,3 +176,9 @@ def post_api(
     new_post = Post(**post.model_dump(), author_id=user_id)
     session.add(new_post)
     return post
+
+
+@app.get("/token")
+def token(res: Response):
+    res.set_cookie(key="payload", value=sign_jwt("secret"))
+    return {}

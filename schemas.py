@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import datetime
 
 
 class UserLogin(BaseModel):
@@ -18,3 +19,13 @@ class UserResponse(BaseModel):
 class PostCreate(BaseModel):
     title: str
     content: str
+
+
+class AccessToken(BaseModel):
+    username: str
+    expire: bool = False
+    exp: datetime | None = None
+
+
+class TokenResponse(BaseModel):
+    token: str

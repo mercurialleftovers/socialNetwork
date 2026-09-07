@@ -11,7 +11,7 @@ DB_URL = os.getenv("DB_URL", default="sqlite:///db.db")
 
 engine = create_engine(
     DB_URL,
-    echo=True,
+    echo=False,
 )
 
 SessionLocal = sessionmaker(bind=engine)
