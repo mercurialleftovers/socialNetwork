@@ -76,7 +76,13 @@ def post_view(
     id_: int,
     session: Annotated[Session, Depends(get_db_session)],
 ):
-    post: Post = session.execute(select(Post, id_)).scalars().all()[0]
+    post: Post | None = session.execute(
+        select(Post).where(Post.id == id_)
+    ).scalar_one_or_none()
+
+    if not post:
+        raise Exception(f"post with {id_=} does not exist")
+
     print(post)
     print(post.author)
 
@@ -156,7 +162,7 @@ def register_api(
         "password"
     ]  # TODO(bader): this seems to be against best practices to me, but it works nontheless
     session.add(User(**new_user))
-    return user
+    return user  # NOTE(bader): if I manually specify the fields to instantiate a UserResponse object, it increases tight coupling
 
 
 # TODO(bader): here, you must set the auth cookie, to know the user_id
@@ -180,5 +186,6 @@ def post_api(
 
 @app.get("/token")
 def token(res: Response):
-    res.set_cookie(key="payload", value=sign_jwt("secret"))
-    return {}
+    signed: str = sign_jwt("secret")
+    res.set_cookie(key="payload", value=signed)
+    return {"payload": signed}

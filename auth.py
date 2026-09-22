@@ -4,13 +4,14 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from schemas import UserLogin, AccessToken
 from models import User
-from datetime import datetime, UTC, timedelta, timezone
+
+from datetime import datetime, UTC, timedelta
 import os
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
+SECRET_KEY = os.getenv("SECRET_KEY", default="SECRET_KEY_HERE_LOL")
+ALGORITHM = os.getenv("ALGORITHM", default="HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
     os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", default="15")  # default is 15 minutes
 )
@@ -35,7 +36,7 @@ def verify_password(password: str, hash: str) -> bool:
     return password_hasher.verify(password=password, hash=hash)
 
 
-def authenticate_user(user: User, db_user: UserLogin) -> bool:
+def authenticate_user(user: UserLogin, db_user: User) -> bool:
     verified: bool = verify_password(user.password, db_user.password_hash)
     return verified
 
